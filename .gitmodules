@@ -1,0 +1,3 @@
+[submodule "xosc"]
+	path = xosc
+	url = https://github.com/DarkRyu550/xosc
