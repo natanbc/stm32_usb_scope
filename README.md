@@ -40,6 +40,14 @@ Each sample is printed as a single line, with each column representing one of th
 - Difference to last sample
 - Mean of this sample and the last
 
+# Test the scope
+
+The following schematic shows how to test the scope using the 1kHz square wave it generates on PB1.
+
+![schematic](https://github.com/natanbc/stm32_usb_scope/raw/master/assets/example-schematic.png)
+
+![top view](https://github.com/natanbc/stm32_usb_scope/raw/master/assets/top-view.jpg)
+
 # Video (ignore se você não for o simões)
 
 https://www.youtube.com/watch?v=lJdXwsVDLeo
