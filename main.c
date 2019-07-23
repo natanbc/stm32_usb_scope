@@ -2,6 +2,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "chprintf.h"
+#include "usbcfg.h"
 
 //must be included before adc_config, pwm_config and serial_config
 #include "config.h"
@@ -62,7 +63,6 @@ static THD_FUNCTION(DataSenderThread, arg) {
     bool restartSampling = false;
     while(true) {
         adcsample_t* pbuf;
-        //TODO: send data as binary to improve speed?
         chprintf((BaseSequentialStream*)&SERIAL,"# Fetching buffer...\n");
         chMBFetchTimeout(&filled_buffers, (msg_t*)&pbuf, TIME_INFINITE);
         if(pbuf == NULL) {
@@ -71,12 +71,12 @@ static THD_FUNCTION(DataSenderThread, arg) {
             break;
         }
         chprintf((BaseSequentialStream*)&SERIAL, "# Got ADC response\n");
-        sdPut(&SERIAL, '>');
+        SERIAL_WRITE_CHAR(&SERIAL, '>');
         uint16_t endiannessTest = 0x1234;
-        sdWrite(&SERIAL, (uint8_t*)&endiannessTest, 2);
+        SERIAL_WRITE_DATA(&SERIAL, (uint8_t*)&endiannessTest, 2);
         uint32_t len = ADC_BUFFER_SIZE / 2;
-        sdWrite(&SERIAL, (uint8_t*)&len, 4);
-        sdWrite(&SERIAL, (uint8_t*)pbuf, ADC_BUFFER_SIZE /* / 2 * 2 */);
+        SERIAL_WRITE_DATA(&SERIAL, (uint8_t*)&len, 4);
+        SERIAL_WRITE_DATA(&SERIAL, (uint8_t*)pbuf, ADC_BUFFER_SIZE /* / 2 * 2 */);
         chprintf((BaseSequentialStream*)&SERIAL, "\n");
         if(restartSampling) {
             restartSampling = false;
@@ -99,9 +99,7 @@ int main(void) {
 
     chMBObjectInit(&filled_buffers, buffers_queue, NUM_BUFFERS);
     
-    palSetLineMode(SERIAL_TX_PIN,    PAL_MODE_STM32_ALTERNATE_OPENDRAIN);
-    palSetLineMode(SERIAL_RX_PIN,    PAL_MODE_INPUT);
-    sdStart(&SERIAL, NULL);
+    serial_start();
 
     palSetLineMode(INPUT_PIN,        PAL_MODE_INPUT_ANALOG);
     adcObjectInit(&ADCD1);
@@ -152,9 +150,11 @@ int main(void) {
     palSetLineMode(LED_PIN,          PAL_MODE_OUTPUT_OPENDRAIN);
 #endif
 
+    serial_wait_until_ready();
+
     chThdCreateStatic(waDataSender, sizeof(waDataSender), NORMALPRIO + 1, DataSenderThread, NULL);
     adcStartConversion(&ADCD1, &adccg, &sample_buf[0], ADC_BUFFER_SIZE);
-    while (true) {
+    while(true) {
 #if LED_ENABLE
         palToggleLine(LED_PIN);
         chThdSleepMilliseconds(50);

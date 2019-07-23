@@ -19,6 +19,10 @@
 #define INPUT_SAMPLE_RATE        ADC_SAMPLE_1P5
 #define ADC_BUFFER_SIZE          1024
 
+//Use micro USB port to send data. Disables regular
+//serial if enabled.
+#define SERIAL_USE_USB           TRUE
+
 //DRIVER   TX   RX
 //  1      A9   A10
 //  2      A2   A3
