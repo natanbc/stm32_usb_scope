@@ -59,7 +59,7 @@ int main(void) {
     //This is slightly complicated, so check https://www.playembedded.org/blog/stm32-tim-chibios-pwm
     //if you're lost.
     //
-    //based on the example in secion 2.3:
+    //based on the example in section 2.3:
     //
     //frequency = timer frequency
     //period = TIMx_ARR
