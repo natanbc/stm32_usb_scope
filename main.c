@@ -3,43 +3,20 @@
 #include "hal.h"
 #include "chprintf.h"
 
-#define INPUT_CHANNEL            ADC_CHANNEL_IN8
-#define INPUT_SAMPLE_RATE        ADC_SAMPLE_1P5
+//must be included before adc_config, pwm_config and serial_config
+#include "config.h"
 
 #include "adc_config.h"
+#if TEST_WAVE_ENABLE
+    #include "pwm_config.h"
+#endif
+#include "serial_config.h"
 
-//if you want to change this, you also need to change cfg/mcuconf.h to use
-//the appropriate USART (by default 1 is enabled and the others disabled)
-#define SERIAL                   SD1
-#define SERIAL_TX_PIN            PAL_LINE(GPIOA, 9)
-#define SERIAL_RX_PIN            PAL_LINE(GPIOA, 10)
-
-
-#define TEST_WAVE_ENABLE         TRUE
-//PB1 is TIM3 CH4
-#define TEST_WAVE_PWM            PWMD3
-#define TEST_WAVE_CHANNEL        4
-#define TEST_WAVE_PIN            PAL_LINE(GPIOB, 1)
-//frequency of the internal timer. you probably won't need to change this
-#define TEST_WAVE_TIM_FREQ       1000000
-//frequency of the generated pwm signal
-#define TEST_WAVE_PWM_FREQ       200
-//50% duty cycle
-#define TEST_WAVE_WIDTH          PWM_PERCENTAGE_TO_WIDTH(&TEST_WAVE_PWM, 5000)
-
-
-#define LED_ENABLE               TRUE
-#define LED_PIN                  PAL_LINE(GPIOC, GPIOC_LED)
+#define ADC_CHANNEL_COUNT 1
 
 #define NUM_BUFFERS              2
 static msg_t buffers_queue[NUM_BUFFERS];
 static mailbox_t filled_buffers;
-
-//only one channel for now, might extend in the future
-//use a define so no magic constants get forgotten if
-//multiple channels are eventually added.
-#define ADC_CHANNEL_COUNT        1
-#define ADC_BUFFER_SIZE          1024
 
 static const ADCConfig adccfg = {};
 //buffer is an interleaved array (ch1, ch2, ..., chN, ch1, ch2, ..., chN, ...)
@@ -85,6 +62,7 @@ static THD_FUNCTION(DataSenderThread, arg) {
     bool restartSampling = false;
     while(true) {
         adcsample_t* pbuf;
+        //TODO: send data as binary to improve speed?
         chprintf((BaseSequentialStream*)&SERIAL,"# Fetching buffer...\n");
         chMBFetchTimeout(&filled_buffers, (msg_t*)&pbuf, TIME_INFINITE);
         if(pbuf == NULL) {
@@ -93,9 +71,13 @@ static THD_FUNCTION(DataSenderThread, arg) {
             break;
         }
         chprintf((BaseSequentialStream*)&SERIAL, "# Got ADC response\n");
-        for(int i = 0; i < ADC_BUFFER_SIZE/2; i++) {
-            chprintf((BaseSequentialStream*)&SERIAL, "%d\n", pbuf[i]);
-        }
+        sdPut(&SERIAL, '>');
+        uint16_t endiannessTest = 0x1234;
+        sdWrite(&SERIAL, (uint8_t*)&endiannessTest, 2);
+        uint32_t len = ADC_BUFFER_SIZE / 2;
+        sdWrite(&SERIAL, (uint8_t*)&len, 4);
+        sdWrite(&SERIAL, (uint8_t*)pbuf, ADC_BUFFER_SIZE /* / 2 * 2 */);
+        chprintf((BaseSequentialStream*)&SERIAL, "\n");
         if(restartSampling) {
             restartSampling = false;
             adcStartConversion(&ADCD1, &adccg, &sample_buf[0], ADC_BUFFER_SIZE);
@@ -159,10 +141,11 @@ int main(void) {
     pwmcfg.dier = 0;
 
 
-    pwmStart(&TEST_WAVE_PWM,         &pwmcfg);
+    pwmStart(&TEST_WAVE_PWM_OBJ,     &pwmcfg);
 
     //channels are 1-based but this function expects them as 0-based
-    pwmEnableChannel(&TEST_WAVE_PWM, TEST_WAVE_CHANNEL - 1, TEST_WAVE_WIDTH);
+    pwmEnableChannel(&TEST_WAVE_PWM_OBJ, TEST_WAVE_CHANNEL - 1,
+            PWM_PERCENTAGE_TO_WIDTH(&TEST_WAVE_PWM_OBJ, TEST_WAVE_WIDTH * 100));
 #endif
 
 #if LED_ENABLE
