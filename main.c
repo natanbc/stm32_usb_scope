@@ -77,7 +77,7 @@ static THD_FUNCTION(DataSenderThread, arg) {
         uint32_t len = ADC_BUFFER_SIZE / 2;
         SERIAL_WRITE_DATA(&SERIAL, (uint8_t*)&len, 4);
         SERIAL_WRITE_DATA(&SERIAL, (uint8_t*)pbuf, ADC_BUFFER_SIZE /* / 2 * 2 */);
-        chprintf((BaseSequentialStream*)&SERIAL, "\n");
+        SERIAL_WRITE_CHAR(&SERIAL, '\n');
         if(restartSampling) {
             restartSampling = false;
             adcStartConversion(&ADCD1, &adccg, &sample_buf[0], ADC_BUFFER_SIZE);
